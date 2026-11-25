@@ -1,0 +1,14 @@
+{
+  "slug": "yangyang-48-paint-quantile",
+  "title": "砚荷微缩·场景喷涂材料用量分位预测",
+  "direction": "条件分位回归与备料量",
+  "layout": "invert",
+  "theme": "深靛喷涂色板",
+  "recipient": "比例模型喷涂组",
+  "work_modules": [
+    "试喷耗用台账",
+    "分位用量拟合",
+    "备料建议与误差对照"
+  ],
+  "follow_latest": false
+}

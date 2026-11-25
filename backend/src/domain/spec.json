@@ -1,0 +1,75 @@
+{
+  "organization": "砚荷微缩布景社（16 人）",
+  "tagline": "从历史喷涂面积和遍数估计常用备料分位，给新布景返回每项需备的体积。",
+  "source": "《比例布景喷桶交接_11月.csv》与完工耗用记录",
+  "record_name": "喷涂耗用工单",
+  "algorithm": "Pinball 损失的条件分位回归",
+  "formula": "用面积×遍数和遍数作特征拟合线性用量，最小化 τ·正误差+(1−τ)·负误差。在最后若干完工日检验报量覆盖率和损失。",
+  "decision_prompt": "不同布景目前各备多少毫升，指定保供分位在留出工单上实际覆盖多少？",
+  "fields": [
+    {
+      "key": "ticket",
+      "label": "喷涂工单号",
+      "type": "text",
+      "example": "YH-X01"
+    },
+    {
+      "key": "day",
+      "label": "交接日期",
+      "type": "date",
+      "example": "2026-11-23"
+    },
+    {
+      "key": "area",
+      "label": "喷涂面积（dm²）",
+      "type": "number",
+      "example": 23.5,
+      "min": 0.1,
+      "max": 500
+    },
+    {
+      "key": "passes",
+      "label": "喷涂遍数",
+      "type": "integer",
+      "example": 3,
+      "min": 1,
+      "max": 12
+    },
+    {
+      "key": "status",
+      "label": "喷涂状态",
+      "type": "choice",
+      "example": "待喷",
+      "choices": [
+        "已完工",
+        "待喷"
+      ]
+    },
+    {
+      "key": "used",
+      "label": "完工耗用（mL）",
+      "type": "number",
+      "example": 0,
+      "min": 0,
+      "max": 25000
+    }
+  ],
+  "parameters": [
+    {
+      "key": "quantile",
+      "label": "备料覆盖分位（%）",
+      "type": "integer",
+      "min": 51,
+      "max": 99,
+      "default": 85
+    },
+    {
+      "key": "holdout",
+      "label": "末尾留出完工日",
+      "type": "integer",
+      "min": 1,
+      "max": 20,
+      "default": 3
+    }
+  ]
+}
