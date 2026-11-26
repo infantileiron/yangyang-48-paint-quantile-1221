@@ -11,11 +11,16 @@ def validated(fields, supplied, *, defaults=False):
     clean = {}
     for field in fields:
         key, label, kind = (field[prop] for prop in ('key', 'label', 'type'))
-        value = supplied.get(key, field.get('default') if defaults else None)
-        if value is None or str(value).strip() == '':
+        optional = not field.get('required', True)
+        if key not in supplied or supplied[key] is None or str(supplied[key]).strip() == '':
+            # 可选且带默认值的字段（如来源版本号），或参数默认模式下的默认值，缺失时回落。
+            if (optional and 'default' in field) or (defaults and 'default' in field):
+                clean[key] = field['default']
+                continue
             if field.get('required', True):
                 raise BusinessError(f'请填写「{label}」')
             continue
+        value = supplied[key]
         try:
             if kind in ('number', 'integer'):
                 if isinstance(value, bool):

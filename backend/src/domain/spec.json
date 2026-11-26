@@ -14,6 +14,17 @@
       "example": "YH-X01"
     },
     {
+      "key": "revision",
+      "label": "来源版本号",
+      "type": "integer",
+      "required": false,
+      "min": 1,
+      "max": 10000,
+      "default": 1,
+      "example": 2,
+      "help": "同工单补报或更正时递增；留空按第 1 版。系统只认每单最新版本，旧版本自动停用。"
+    },
+    {
       "key": "day",
       "label": "交接日期",
       "type": "date",

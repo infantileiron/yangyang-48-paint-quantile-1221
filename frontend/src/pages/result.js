@@ -7,6 +7,20 @@ import { bindDownloads, bindForm, notify } from '../hooks/actions.js';
 import { esc, formatMetric, timeLabel } from '../utils/html.js';
 import { runTable } from './analysis.js';
 
+const KIND_BADGE = { 待喷建议: 'tag tag-pending', 迟到完工回填: 'tag tag-late', 时间留出: 'tag tag-holdout' };
+
+function detailColumns(columns) {
+  return columns.map(column => {
+    if (column.key === 'kind') {
+      return {...column, html: row => `<span class="${KIND_BADGE[row.kind] || 'tag'}">${esc(row.kind)}</span>`};
+    }
+    if (column.key === 'revision') {
+      return {...column, html: row => `<span class="rev">${esc(row.revision)}</span>`};
+    }
+    return column;
+  });
+}
+
 export async function resultPage(spec, user, route) {
   if (!route.id) {
     const runs = await get('/runs');
@@ -24,7 +38,7 @@ export async function resultPage(spec, user, route) {
   if (!run.review && user.role === Role.SUPERVISOR) review = `<form id="review-form" data-id="${id}"><label class="field"><span>复核结论</span><select name="decision"><option value="approved">签核通过</option><option value="returned">退回补充</option></select></label><label class="field"><span>复核依据</span><textarea name="note" required minlength="2" maxlength="1000" placeholder="${esc(spec.decision_prompt)}"></textarea></label>${formError}<button class="primary">保存复核</button></form>`;
   const parameters = spec.parameters.map(field => `<li><span>${esc(field.label)}</span><b>${esc(run.parameters[field.key])}</b></li>`).join('');
   return `${head}<div class="split result-summary"><section class="conclusion"><h2>${esc(data.headline)}</h2><p>${esc(data.summary)}</p>${data.metrics.length ? `<dl class="metrics">${data.metrics.map(metric => `<div><dt>${esc(metric.label)}</dt><dd>${esc(formatMetric(metric.value))}${metric.unit ? `<small> ${esc(metric.unit)}</small>` : ''}</dd></div>`).join('')}</dl>` : ''}</section><aside class="method"><h2>本次条件</h2><ul class="parameters">${parameters}</ul>${bars(data.chart)}</aside></div>
-    <section class="panel"><div class="panel-heading"><h2>计算明细</h2><button data-download="/runs/${id}/export">下载 CSV</button></div>${table(data.columns,data.rows,'当前参数下无明细，计算结论保留。')}</section>
+    <section class="panel"><div class="panel-heading"><h2>计算明细</h2><button data-download="/runs/${id}/export">下载 CSV</button></div>${table(detailColumns(data.columns),data.rows,'当前参数下无明细，计算结论保留。')}</section>
     <section class="panel"><div class="panel-heading"><h2>业务签核</h2>${run.review?.decision === Decision.APPROVED ? '<a href="#reports">查看分发 →</a>' : ''}</div><div class="panel-body">${review}</div></section>`;
 }
 

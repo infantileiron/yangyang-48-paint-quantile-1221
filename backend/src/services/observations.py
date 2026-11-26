@@ -61,6 +61,8 @@ def add_observations(db, rows, actor, action):
     keyed = {content_key(row): row for row in rows}
     existing = set(db.scalars(select(Observation.source_key).where(Observation.source_key.in_(keyed))))
     fresh = {key: row for key, row in keyed.items() if key not in existing}
+    if fresh:
+        _ensure_revision_available(db, list(fresh.values()))
     if db.scalar(select(func.count(Observation.id))) + len(fresh) > MAX_OBSERVATIONS:
         raise BusinessError('当前项目最多保留 5000 条观测记录', 409)
     items = [Observation(source_key=key, payload=row) for key, row in fresh.items()]
@@ -72,3 +74,34 @@ def add_observations(db, rows, actor, action):
     except IntegrityError as exc:
         raise BusinessError('有相同记录刚刚写入，请刷新后重试', 409) from exc
     return items
+
+
+def _ensure_revision_available(db, fresh_rows):
+    """同一工单的同一来源版本号只能入账一次；补报或更正必须递增版本号。"""
+    wanted = {}
+    for row in fresh_rows:
+        marker = (row['ticket'], row.get('revision', 1))
+        if marker in wanted:
+            raise BusinessError(
+                f'工单 {marker[0]} 的第 {marker[1]} 版在本次提交中重复，请递增来源版本号', 409)
+        wanted[marker] = True
+    for payload in db.scalars(select(Observation.payload)):
+        marker = (payload['ticket'], payload.get('revision', 1))
+        if marker in wanted:
+            raise BusinessError(
+                f'工单 {marker[0]} 的第 {marker[1]} 版已入账，补报或更正请改用更大的来源版本号', 409)
+
+
+def current_observation_ids(db):
+    """返回每个工单最新来源版本对应观测的主键（按主键排序），用于提交时固化快照。
+
+    已排队的分析在提交时冻结该清单，事后到达的更正不会改变历史任务；
+    只有新建的分析才会取到更正后的最新版本。
+    """
+    latest = {}
+    for obs in db.scalars(select(Observation).order_by(Observation.id)):
+        ticket = obs.payload['ticket']
+        revision = obs.payload.get('revision', 1)
+        if ticket not in latest or revision > latest[ticket][0]:
+            latest[ticket] = (revision, obs.id)
+    return sorted(obs_id for _, obs_id in latest.values())

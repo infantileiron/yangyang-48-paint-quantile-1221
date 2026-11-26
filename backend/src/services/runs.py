@@ -16,6 +16,9 @@ logger = logging.getLogger(__name__)
 
 def create_run(db, request, actor):
     parameters = validated(SPEC['parameters'], request.parameters, defaults=True)
+    # 提交时冻结「当时已入账的全部观测版本」。排队后到达的补报/更正不进入本任务，
+    # 已排队任务始终按提交所见版本计算；只有新建任务才会纳入更正后的版本。
+    # 分析内部再按工单来源版本号取最新，并凭完整版本历史识别迟到完工回填。
     sample_ids = list(db.scalars(select(Observation.id).order_by(Observation.id)))
     if not sample_ids:
         raise BusinessError('请先导入观测记录')
@@ -23,7 +26,8 @@ def create_run(db, request, actor):
                        last_observation_id=sample_ids[-1], sample_size=len(sample_ids))
     db.add(item)
     db.flush()
-    db.add(AuditEvent(actor=actor, action='run.created', detail=f'分析 #{item.id}，固化 {item.sample_size} 条观测'))
+    db.add(AuditEvent(actor=actor, action='run.created',
+                      detail=f'分析 #{item.id}，冻结提交时点 {item.sample_size} 条观测版本'))
     return item
 
 
